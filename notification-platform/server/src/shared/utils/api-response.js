@@ -10,14 +10,16 @@ class ApiResponse {
     return res.status(statusCode).json(payload);
   }
 
-  static error(res, message, statusCode = 500, errorCode = 'INTERNAL_SERVER_ERROR', errors = null) {
+  static error(res, message, statusCode = 500, errorCode = 'INTERNAL_SERVER_ERROR', details = null) {
     const payload = {
       success: false,
-      message,
-      errorCode,
+      error: {
+        code: errorCode,
+        message,
+      },
     };
-    if (errors !== null && errors !== undefined) {
-      payload.errors = errors;
+    if (details !== null && details !== undefined) {
+      payload.error.details = details;
     }
     return res.status(statusCode).json(payload);
   }

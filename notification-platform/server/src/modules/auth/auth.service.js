@@ -1,6 +1,6 @@
 const authRepository = require('./auth.repository');
 const { hashPassword, comparePassword } = require('../../shared/utils/password');
-const { generateToken } = require('../../shared/utils/jwt');
+const { signToken } = require('../../shared/utils/jwt');
 const ConflictError = require('../../shared/errors/conflict-error');
 const AuthenticationError = require('../../shared/errors/authentication-error');
 const NotFoundError = require('../../shared/errors/not-found-error');
@@ -8,19 +8,21 @@ const { AUTH_MESSAGES } = require('./auth.constants');
 
 class AuthService {
   async register({ email, password, name }) {
-    const existingUser = await authRepository.findByEmail(email);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existingUser = await authRepository.findByEmail(normalizedEmail);
     if (existingUser) {
       throw new ConflictError(AUTH_MESSAGES.EMAIL_IN_USE);
     }
 
     const passwordHash = await hashPassword(password);
     const user = await authRepository.createUser({
-      email,
+      email: normalizedEmail,
       passwordHash,
       name,
     });
 
-    const token = generateToken({
+    const token = signToken({
       sub: user.id,
       email: user.email,
     });
@@ -29,7 +31,9 @@ class AuthService {
   }
 
   async login({ email, password }) {
-    const user = await authRepository.findByEmail(email);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await authRepository.findByEmail(normalizedEmail);
     if (!user) {
       throw new AuthenticationError(AUTH_MESSAGES.INVALID_CREDENTIALS);
     }
@@ -39,7 +43,7 @@ class AuthService {
       throw new AuthenticationError(AUTH_MESSAGES.INVALID_CREDENTIALS);
     }
 
-    const token = generateToken({
+    const token = signToken({
       sub: user.id,
       email: user.email,
     });

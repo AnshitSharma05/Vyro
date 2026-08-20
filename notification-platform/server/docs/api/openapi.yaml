@@ -38,10 +38,6 @@ paths:
       responses:
         '201':
           description: User registered successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
         '400':
           description: Validation error
         '409':
@@ -73,10 +69,6 @@ paths:
       responses:
         '200':
           description: Login successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
         '401':
           description: Invalid email or password
 
@@ -90,24 +82,8 @@ paths:
       responses:
         '200':
           description: User profile retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: User profile retrieved successfully
-                  data:
-                    type: object
-                    properties:
-                      user:
-                        $ref: '#/components/schemas/User'
         '401':
-          description: Unauthorized / Invalid or expired token
+          description: Unauthorized
 
   /auth/logout:
     post:
@@ -119,6 +95,260 @@ paths:
       responses:
         '200':
           description: Logout successful
+
+  /organizations:
+    post:
+      summary: Create a new organization (User becomes OWNER)
+      tags:
+        - Organizations
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: Acme Corporation
+      responses:
+        '201':
+          description: Organization created successfully
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+
+    get:
+      summary: List organizations where authenticated user is a member
+      tags:
+        - Organizations
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Organizations retrieved successfully
+        '401':
+          description: Unauthorized
+
+  /organizations/{organizationId}:
+    get:
+      summary: Get organization details (Requires membership)
+      tags:
+        - Organizations
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Organization details retrieved
+        '403':
+          description: Access forbidden (User is not a member)
+        '404':
+          description: Organization not found
+
+    patch:
+      summary: Update organization (OWNER or ADMIN role required)
+      tags:
+        - Organizations
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Acme Corp Updated
+      responses:
+        '200':
+          description: Organization updated successfully
+        '403':
+          description: Insufficient permissions / Forbidden
+
+  /organizations/{organizationId}/members:
+    get:
+      summary: List organization members (Requires membership)
+      tags:
+        - Organizations
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Members list retrieved
+
+  /organizations/{organizationId}/projects:
+    post:
+      summary: Create project inside an organization (OWNER or ADMIN required)
+      tags:
+        - Projects
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: E-Commerce Store
+      responses:
+        '201':
+          description: Project created successfully
+        '403':
+          description: Insufficient permissions / Not an org member
+
+    get:
+      summary: List projects in an organization (Requires membership)
+      tags:
+        - Projects
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Projects list retrieved
+
+  /organizations/{organizationId}/projects/{projectId}:
+    get:
+      summary: Get project details (Requires membership & tenant matching)
+      tags:
+        - Projects
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Project details retrieved
+        '403':
+          description: Not a member of the organization
+        '404':
+          description: Project not found in organization
+
+    patch:
+      summary: Update project (OWNER or ADMIN required)
+      tags:
+        - Projects
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Mobile App Backend
+      responses:
+        '200':
+          description: Project updated successfully
+        '403':
+          description: Insufficient permissions / Forbidden
+
+  /projects/{projectId}/api-keys:
+    post:
+      summary: Create a new API key for a project (OWNER or ADMIN required)
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: Production Backend Service
+                expiresAt:
+                  type: string
+                  format: date-time
+                  example: "2027-12-31T23:59:59Z"
+      responses:
+        '201':
+          description: API key created successfully (raw key returned ONLY once)
           content:
             application/json:
               schema:
@@ -127,9 +357,297 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  message:
-                    type: string
-                    example: User logged out successfully
+                  data:
+                    $ref: '#/components/schemas/ApiKeyCreated'
+        '403':
+          description: Insufficient permissions (MEMBER role forbidden) or not an org member
+        '404':
+          description: Project not found
+
+    get:
+      summary: List API keys for a project (Metadata only)
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of API key metadata retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      apiKeys:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ApiKey'
+        '403':
+          description: Access forbidden (User is not an org member)
+
+  /projects/{projectId}/api-keys/{apiKeyId}/revoke:
+    post:
+      summary: Revoke an API key (OWNER or ADMIN required)
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: apiKeyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: API key revoked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      apiKey:
+                        $ref: '#/components/schemas/ApiKey'
+        '403':
+          description: Insufficient permissions (MEMBER role forbidden)
+        '404':
+          description: API key not found in project
+
+  /projects/{projectId}/templates:
+    post:
+      summary: Create a new notification template (OWNER or ADMIN required)
+      tags:
+        - Templates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - channel
+                - body
+              properties:
+                name:
+                  type: string
+                  example: order-confirmed
+                channel:
+                  type: string
+                  enum: [EMAIL, SMS, WHATSAPP, PUSH]
+                  example: EMAIL
+                subject:
+                  type: string
+                  example: Order {{orderId}} Confirmed
+                  description: Required for EMAIL channel; forbidden for non-EMAIL channels.
+                body:
+                  type: string
+                  example: Hello {{name}}, your order {{orderId}} is confirmed.
+      responses:
+        '201':
+          description: Template created successfully
+        '400':
+          description: Validation error (e.g. missing subject for EMAIL)
+        '403':
+          description: Insufficient permissions (MEMBER role forbidden)
+        '409':
+          description: Duplicate template name within project
+
+    get:
+      summary: List templates for a project (Supports pagination & channel filtering)
+      tags:
+        - Templates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: channel
+          in: query
+          schema:
+            type: string
+            enum: [EMAIL, SMS, WHATSAPP, PUSH]
+      responses:
+        '200':
+          description: List of templates retrieved successfully
+
+  /projects/{projectId}/templates/preview:
+    post:
+      summary: Preview template rendering against sample data payload
+      tags:
+        - Templates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                templateId:
+                  type: string
+                  format: uuid
+                  description: Optional ID of a saved template
+                subject:
+                  type: string
+                  description: Optional draft subject (if templateId not provided)
+                body:
+                  type: string
+                  description: Optional draft body (if templateId not provided)
+                data:
+                  type: object
+                  example:
+                    name: Anshit
+                    orderId: ORD-12345
+      responses:
+        '200':
+          description: Template rendered successfully
+        '400':
+          description: Missing required variables validation error
+
+  /projects/{projectId}/templates/{templateId}:
+    get:
+      summary: Get template details by ID
+      tags:
+        - Templates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Template details retrieved
+        '404':
+          description: Template not found
+
+    patch:
+      summary: Update template (OWNER or ADMIN required)
+      tags:
+        - Templates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                subject:
+                  type: string
+                body:
+                  type: string
+      responses:
+        '200':
+          description: Template updated successfully
+        '403':
+          description: Insufficient permissions
+
+    delete:
+      summary: Delete template (OWNER or ADMIN required)
+      tags:
+        - Templates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Template deleted successfully
 
 components:
   securitySchemes:
@@ -137,22 +655,23 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Machine-to-machine authentication header format `np_live_<prefix>_<secret>`
 
   schemas:
-    User:
+    Organization:
       type: object
       properties:
         id:
           type: string
           format: uuid
-          example: 123e4567-e89b-12d3-a456-426614174000
-        email:
-          type: string
-          format: email
-          example: user@example.com
         name:
           type: string
-          example: John Doe
+        slug:
+          type: string
         createdAt:
           type: string
           format: date-time
@@ -160,20 +679,101 @@ components:
           type: string
           format: date-time
 
-    AuthResponse:
+    Project:
       type: object
       properties:
-        success:
-          type: boolean
-          example: true
-        message:
+        id:
           type: string
-          example: Action successful
-        data:
-          type: object
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        keyPrefix:
+          type: string
+          example: np_live_a8f3b19c
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ApiKeyCreated:
+      allOf:
+        - $ref: '#/components/schemas/ApiKey'
+        - type: object
           properties:
-            user:
-              $ref: '#/components/schemas/User'
-            token:
+            key:
               type: string
-              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+              example: np_live_a8f3b19c_83f9104b2c894e72a129d58b...
+              description: Raw API key returned ONLY once during creation.
+
+    Template:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: order-confirmed
+        channel:
+          type: string
+          enum: [EMAIL, SMS, WHATSAPP, PUSH]
+        subject:
+          type: string
+          nullable: true
+          example: Order {{orderId}} Confirmed
+        body:
+          type: string
+          example: Hello {{name}}, your order {{orderId}} is confirmed.
+        variables:
+          type: array
+          items:
+            type: string
+          example: [orderId, name]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+

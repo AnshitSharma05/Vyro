@@ -1,6 +1,6 @@
 const { verifyToken } = require('../shared/utils/jwt');
 const AuthenticationError = require('../shared/errors/authentication-error');
-const prisma = require('../config/database');
+const authRepository = require('../modules/auth/auth.repository');
 
 const authenticate = async (req, res, next) => {
   try {
@@ -17,16 +17,7 @@ const authenticate = async (req, res, next) => {
 
     const decoded = verifyToken(token);
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.sub },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const user = await authRepository.findById(decoded.sub);
 
     if (!user) {
       throw new AuthenticationError('User account associated with token no longer exists');
