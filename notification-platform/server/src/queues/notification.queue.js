@@ -1,0 +1,1 @@
+// BullMQ notification queue setup

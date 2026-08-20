@@ -1,0 +1,1 @@
+// SDK Templates resource placeholder

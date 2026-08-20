@@ -1,0 +1,1 @@
+// Templates list page component

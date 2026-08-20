@@ -1,0 +1,1 @@
+// Notifications list page component

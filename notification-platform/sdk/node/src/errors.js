@@ -1,0 +1,1 @@
+// SDK Error classes placeholder

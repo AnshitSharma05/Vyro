@@ -1,0 +1,1 @@
+// Notification details page component

@@ -1,0 +1,1 @@
+// Auth store state management

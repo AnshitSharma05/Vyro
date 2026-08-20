@@ -1,0 +1,3 @@
+# Root Docker Compose configuration for local development orchestration
+version: '3.8'
+services: {}

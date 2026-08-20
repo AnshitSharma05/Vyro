@@ -1,0 +1,1 @@
+// Client JSDoc / Type definitions
