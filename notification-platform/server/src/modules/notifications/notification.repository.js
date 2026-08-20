@@ -1,6 +1,23 @@
 const prisma = require('../../config/database');
 
+const MAX_ERROR_MESSAGE_LENGTH = 500;
+
 class NotificationRepository {
+  /**
+   * Truncates and sanitizes error message string for database storage.
+   *
+   * @param {string|null} msg
+   * @returns {string|null}
+   */
+  sanitizeErrorMessage(msg) {
+    if (!msg || typeof msg !== 'string') return null;
+    const trimmed = msg.trim();
+    if (trimmed.length > MAX_ERROR_MESSAGE_LENGTH) {
+      return `${trimmed.substring(0, MAX_ERROR_MESSAGE_LENGTH - 3)}...`;
+    }
+    return trimmed;
+  }
+
   async create({ projectId, templateId, channel, recipient, status = 'PENDING', metadata }) {
     return prisma.notification.create({
       data: {
@@ -14,16 +31,23 @@ class NotificationRepository {
     });
   }
 
-  async createAttempt({ notificationId, provider, status, errorCode, errorMessage, deliveredAt }) {
+  async createAttempt({ notificationId, provider, status, attemptNumber = 1, errorCode, errorMessage, deliveredAt }) {
     return prisma.notificationAttempt.create({
       data: {
         notificationId,
         provider,
         status,
+        attemptNumber: attemptNumber || 1,
         errorCode: errorCode || null,
-        errorMessage: errorMessage || null,
+        errorMessage: this.sanitizeErrorMessage(errorMessage),
         deliveredAt: deliveredAt ? new Date(deliveredAt) : null,
       },
+    });
+  }
+
+  async getAttemptCount(notificationId) {
+    return prisma.notificationAttempt.count({
+      where: { notificationId },
     });
   }
 
@@ -40,7 +64,9 @@ class NotificationRepository {
   }
 
   async findManyByProjectId({ projectId, page = 1, limit = 20, status, channel, recipient }) {
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const skip = (safePage - 1) * safeLimit;
     const where = { projectId };
 
     if (status) where.status = status;
@@ -51,11 +77,17 @@ class NotificationRepository {
       prisma.notification.findMany({
         where,
         skip,
-        take: limit,
+        take: safeLimit,
         orderBy: {
           createdAt: 'desc',
         },
         include: {
+          template: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           attempts: {
             orderBy: { attemptedAt: 'asc' },
           },
@@ -64,12 +96,21 @@ class NotificationRepository {
       prisma.notification.count({ where }),
     ]);
 
+    const totalPages = Math.ceil(totalCount / safeLimit) || 1;
+
     return {
-      notifications,
+      items: notifications,
+      notifications, // Backward compatibility for existing callers
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total: totalCount,
+        totalPages,
+      },
       totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit) || 1,
+      page: safePage,
+      limit: safeLimit,
+      totalPages,
     };
   }
 
@@ -77,6 +118,12 @@ class NotificationRepository {
     const notification = await prisma.notification.findUnique({
       where: { id },
       include: {
+        template: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         attempts: {
           orderBy: { attemptedAt: 'asc' },
         },

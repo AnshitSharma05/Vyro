@@ -23,7 +23,7 @@ class NotificationController {
       data,
     });
 
-    return ApiResponse.success(res, NOTIFICATION_MESSAGES.SENT_SUCCESS, result, 200);
+    return ApiResponse.success(res, NOTIFICATION_MESSAGES.ACCEPTED, result, 202);
   });
 
   /**

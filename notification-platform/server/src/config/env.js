@@ -11,6 +11,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required').default('default_jwt_secret_dev_key_32bytes_min'),
   JWT_EXPIRES_IN: z.string().default('7d'),
   BCRYPT_SALT_ROUNDS: z.string().transform((val) => parseInt(val, 10)).default('10'),
+  WORKER_CONCURRENCY: z.string().transform((val) => parseInt(val, 10)).default('5'),
 });
 
 const parseEnv = () => {
@@ -24,10 +25,11 @@ const parseEnv = () => {
         NODE_ENV: 'test',
         PORT: 3000,
         DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/notification_db_test',
-        REDIS_URL: 'redis://localhost:6379',
+        REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
         JWT_SECRET: 'test_secret_key_for_unit_and_integration_tests',
         JWT_EXPIRES_IN: '1h',
         BCRYPT_SALT_ROUNDS: 4,
+        WORKER_CONCURRENCY: 5,
       };
     }
     throw new Error('Environment variable validation failed');

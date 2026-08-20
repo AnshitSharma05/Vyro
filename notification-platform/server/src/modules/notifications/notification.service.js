@@ -1,11 +1,12 @@
 const notificationRepository = require('./notification.repository');
 const templateRepository = require('../templates/template.repository');
 const templateRenderer = require('../templates/template.renderer');
-const providerFactory = require('../../providers/provider.factory');
+const { addNotificationJob } = require('../../queues/notification.queue');
 const NotFoundError = require('../../shared/errors/not-found-error');
 const ValidationError = require('../../shared/errors/validation-error');
+const AppError = require('../../shared/errors/app-error');
 const { NOTIFICATION_MESSAGES } = require('./notification.constants');
-const { NOTIFICATION_STATUS, ATTEMPT_STATUS } = require('../../shared/constants/notification-status');
+const { NOTIFICATION_STATUS } = require('../../shared/constants/notification-status');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\+?[0-9]{7,15}$/;
@@ -28,7 +29,8 @@ class NotificationService {
   }
 
   /**
-   * Core synchronous notification dispatch service method.
+   * Asynchronous notification dispatch service method.
+   * Creates notification with status PENDING, enqueues BullMQ job, and returns immediate pending metadata.
    */
   async sendNotification({ projectId, templateName, recipient, data = {} }) {
     // 1. Resolve template within project scope
@@ -46,7 +48,7 @@ class NotificationService {
       data
     );
 
-    // 4. Create initial Notification record with status PROCESSING and content snapshot
+    // 4. Create initial Notification record with status PENDING and content snapshot
     const initialMetadata = {
       subject: rendered.subject,
       body: rendered.body,
@@ -59,80 +61,29 @@ class NotificationService {
       templateId: template.id,
       channel: template.channel,
       recipient,
-      status: NOTIFICATION_STATUS.PROCESSING,
+      status: NOTIFICATION_STATUS.PENDING,
       metadata: initialMetadata,
     });
 
-    // 5. Select delivery provider instance
-    let provider;
+    // 5. Enqueue job into BullMQ for asynchronous background processing
     try {
-      provider = providerFactory.getProvider(template.channel);
-    } catch (providerErr) {
-      await notificationRepository.createAttempt({
-        notificationId: notification.id,
-        provider: 'UNAVAILABLE',
-        status: ATTEMPT_STATUS.FAILED,
-        errorCode: 'UNSUPPORTED_CHANNEL',
-        errorMessage: providerErr.message,
-      });
-
+      await addNotificationJob({ notificationId: notification.id });
+    } catch (queueError) {
       await notificationRepository.updateStatus(notification.id, {
         status: NOTIFICATION_STATUS.FAILED,
         failedAt: new Date(),
       });
-
-      throw providerErr;
+      throw new AppError('Failed to enqueue notification for processing', 500);
     }
 
-    // 6. Synchronously invoke delivery provider
-    try {
-      const result = await provider.send({
-        recipient,
-        subject: rendered.subject,
-        body: rendered.body,
-        metadata: initialMetadata,
-      });
-
-      // Record successful delivery attempt
-      await notificationRepository.createAttempt({
-        notificationId: notification.id,
-        provider: result.provider || provider.name,
-        status: ATTEMPT_STATUS.SUCCESS,
-        deliveredAt: new Date(),
-      });
-
-      // Update status to SENT
-      const updated = await notificationRepository.updateStatus(notification.id, {
-        status: NOTIFICATION_STATUS.SENT,
-        sentAt: new Date(),
-      });
-
-      return {
-        id: updated.id,
-        status: updated.status,
-        channel: updated.channel,
-        recipient: updated.recipient,
-        createdAt: updated.createdAt,
-        sentAt: updated.sentAt,
-      };
-    } catch (deliveryError) {
-      // Record failed delivery attempt
-      await notificationRepository.createAttempt({
-        notificationId: notification.id,
-        provider: provider.name || 'UNKNOWN_PROVIDER',
-        status: ATTEMPT_STATUS.FAILED,
-        errorCode: deliveryError.errorCode || 'DELIVERY_FAILED',
-        errorMessage: deliveryError.message,
-      });
-
-      // Update status to FAILED
-      await notificationRepository.updateStatus(notification.id, {
-        status: NOTIFICATION_STATUS.FAILED,
-        failedAt: new Date(),
-      });
-
-      throw deliveryError;
-    }
+    // 6. Return immediate pending response
+    return {
+      id: notification.id,
+      status: notification.status,
+      channel: notification.channel,
+      recipient: notification.recipient,
+      createdAt: notification.createdAt,
+    };
   }
 
   async listNotifications({ projectId, page = 1, limit = 20, status, channel, recipient }) {

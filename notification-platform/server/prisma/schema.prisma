@@ -32,6 +32,7 @@ enum NotificationStatus {
   SENT
   FAILED
   CANCELLED
+  RETRYING
 }
 
 enum AttemptStatus {
@@ -168,6 +169,7 @@ model Notification {
 
   @@index([projectId, createdAt(sort: Desc)])
   @@index([projectId, status])
+  @@index([projectId, channel])
   @@index([status])
   @@map("notifications")
 }
@@ -178,6 +180,7 @@ model NotificationAttempt {
   notificationId String
   provider       String
   status         AttemptStatus
+  attemptNumber  Int           @default(1)
   errorCode      String?
   errorMessage   String?
   attemptedAt    DateTime      @default(now())

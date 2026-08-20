@@ -1,4 +1,5 @@
 const NOTIFICATION_MESSAGES = {
+  ACCEPTED: 'Notification request accepted for asynchronous processing',
   SENT_SUCCESS: 'Notification sent successfully',
   RETRIEVED: 'Notification retrieved successfully',
   LIST_RETRIEVED: 'Notifications retrieved successfully',

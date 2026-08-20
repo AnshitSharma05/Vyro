@@ -681,8 +681,8 @@ paths:
                     orderId: ORD-12345
                   description: Dynamic template variables payload
       responses:
-        '200':
-          description: Notification processed and sent successfully
+        '202':
+          description: Notification request accepted for asynchronous background processing
         '400':
           description: Validation error (e.g. invalid email format or missing required variables)
         '401':
@@ -926,7 +926,7 @@ components:
           example: user@example.com
         status:
           type: string
-          enum: [PENDING, PROCESSING, SENT, FAILED, CANCELLED]
+          enum: [PENDING, PROCESSING, SENT, FAILED, CANCELLED, RETRYING]
         metadata:
           type: object
           description: Rendered subject, body, and data payload snapshot.
