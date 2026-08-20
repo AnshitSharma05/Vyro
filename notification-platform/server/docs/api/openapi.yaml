@@ -649,6 +649,135 @@ paths:
         '200':
           description: Template deleted successfully
 
+  /notifications/send:
+    post:
+      summary: Send a notification using a template (Machine X-API-Key authenticated)
+      tags:
+        - Notifications (Machine API)
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - template
+                - recipient
+              properties:
+                template:
+                  type: string
+                  example: order-confirmed
+                  description: Template name identifier within the project
+                recipient:
+                  type: string
+                  example: user@example.com
+                  description: Recipient address or number matching template channel
+                data:
+                  type: object
+                  example:
+                    name: Anshit
+                    orderId: ORD-12345
+                  description: Dynamic template variables payload
+      responses:
+        '200':
+          description: Notification processed and sent successfully
+        '400':
+          description: Validation error (e.g. invalid email format or missing required variables)
+        '401':
+          description: Invalid, missing, or revoked X-API-Key
+        '404':
+          description: Template not found in project
+        '422':
+          description: Delivery provider for channel is unconfigured
+
+  /notifications:
+    get:
+      summary: List notifications for the authenticated project (Machine X-API-Key)
+      tags:
+        - Notifications (Machine API)
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PROCESSING, SENT, FAILED, CANCELLED]
+        - name: channel
+          in: query
+          schema:
+            type: string
+            enum: [EMAIL, SMS, WHATSAPP, PUSH]
+        - name: recipient
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notifications list retrieved
+
+  /notifications/{notificationId}:
+    get:
+      summary: Get notification details and delivery attempts (Machine X-API-Key)
+      tags:
+        - Notifications (Machine API)
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notification details retrieved
+        '404':
+          description: Notification not found in project
+
+  /projects/{projectId}/notifications:
+    get:
+      summary: List notifications for a project (Dashboard Bearer JWT authenticated)
+      tags:
+        - Notifications (Dashboard API)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Project notifications list retrieved
+        '403':
+          description: Access forbidden (User is not an org member)
+
 components:
   securitySchemes:
     BearerAuth:
@@ -775,5 +904,72 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        templateId:
+          type: string
+          format: uuid
+          nullable: true
+        channel:
+          type: string
+          enum: [EMAIL, SMS, WHATSAPP, PUSH]
+        recipient:
+          type: string
+          example: user@example.com
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, SENT, FAILED, CANCELLED]
+        metadata:
+          type: object
+          description: Rendered subject, body, and data payload snapshot.
+        createdAt:
+          type: string
+          format: date-time
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        failedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    NotificationAttempt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        notificationId:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          example: EMAIL_NODEMAILER
+        status:
+          type: string
+          enum: [SUCCESS, FAILED]
+        errorCode:
+          type: string
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        attemptedAt:
+          type: string
+          format: date-time
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+
 
 

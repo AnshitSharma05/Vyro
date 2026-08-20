@@ -1,1 +1,17 @@
-// Notification status enum/constants
+const NOTIFICATION_STATUS = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  SENT: 'SENT',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+};
+
+const ATTEMPT_STATUS = {
+  SUCCESS: 'SUCCESS',
+  FAILED: 'FAILED',
+};
+
+module.exports = {
+  NOTIFICATION_STATUS,
+  ATTEMPT_STATUS,
+};
