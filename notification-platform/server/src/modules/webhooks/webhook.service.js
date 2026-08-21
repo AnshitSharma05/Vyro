@@ -3,6 +3,7 @@ const webhookRepository = require('./webhook.repository');
 const notificationRepository = require('../notifications/notification.repository');
 const prisma = require('../../config/database');
 const mockWebhookAdapter = require('../../providers/webhooks/mock-webhook.adapter');
+const analyticsService = require('../analytics/analytics.service');
 const { addWebhookDeliveryJob } = require('../../queues/webhook.queue');
 const { validateWebhookUrl } = require('../../shared/utils/ssrf-protection');
 const NotFoundError = require('../../shared/errors/not-found-error');
@@ -170,6 +171,24 @@ class WebhookService {
     await notificationRepository.updateStatus(notification.id, {
       status: targetStatus,
     });
+
+    // Non-blocking usage metering record for status transitions
+    const counterMap = {
+      SENT: 'sentCount',
+      DELIVERED: 'deliveredCount',
+      FAILED: 'failedCount',
+      BOUNCED: 'bouncedCount',
+    };
+    if (counterMap[targetStatus]) {
+      analyticsService
+        .recordUsageEvent({
+          projectId: notification.projectId,
+          date: new Date(),
+          channel: notification.channel,
+          counterField: counterMap[targetStatus],
+        })
+        .catch(() => {});
+    }
 
     // 7. Dispatch Outbound Customer Webhooks for Project
     await this.dispatchCustomerWebhooksForEvent(event, notification);

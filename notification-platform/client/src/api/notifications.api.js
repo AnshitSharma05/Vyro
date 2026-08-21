@@ -11,3 +11,8 @@ export const getNotification = async (projectId, notificationId) => {
   const response = await axios.get(`${API_BASE_URL}/projects/${projectId}/notifications/${notificationId}`);
   return response.data;
 };
+
+export const cancelNotification = async (projectId, notificationId) => {
+  const response = await axios.post(`${API_BASE_URL}/projects/${projectId}/notifications/${notificationId}/cancel`);
+  return response.data;
+};

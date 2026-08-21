@@ -6,6 +6,7 @@ const {
   sendNotificationSchema,
   listNotificationsSchema,
   getNotificationSchema,
+  cancelNotificationSchema,
 } = require('./notification.validation');
 const { rateLimitProjectNotification } = require('../../middlewares/rate-limit.middleware');
 
@@ -17,5 +18,6 @@ router.use(authenticateApiKey);
 router.post('/send', rateLimitProjectNotification, validate(sendNotificationSchema), notificationController.send);
 router.get('/', validate(listNotificationsSchema), notificationController.listMachine);
 router.get('/:notificationId', validate(getNotificationSchema), notificationController.getMachine);
+router.post('/:notificationId/cancel', validate(cancelNotificationSchema), notificationController.cancelMachine);
 
 module.exports = router;

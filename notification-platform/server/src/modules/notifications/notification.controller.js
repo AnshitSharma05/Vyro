@@ -14,19 +14,36 @@ class NotificationController {
   send = asyncHandler(async (req, res) => {
     // req.project is attached by api-key.middleware.js
     const projectId = req.project.id;
-    const { template, recipient, data } = req.body;
+    const { channel, template, recipient, data, scheduledAt } = req.body;
     const idempotencyKey = req.headers['idempotency-key'] || req.headers['x-idempotency-key'];
 
     const result = await notificationService.sendNotification({
       projectId,
+      channel,
       templateName: template,
       recipient,
       data,
       idempotencyKey,
+      scheduledAt,
     });
 
     const statusCode = result.status === 'SENT' ? 200 : 202;
     return ApiResponse.success(res, NOTIFICATION_MESSAGES.ACCEPTED, result, statusCode);
+  });
+
+  /**
+   * Machine API Key Handler: POST /api/v1/notifications/:notificationId/cancel
+   */
+  cancelMachine = asyncHandler(async (req, res) => {
+    const projectId = req.project.id;
+    const { notificationId } = req.params;
+
+    const result = await notificationService.cancelNotification({
+      projectId,
+      notificationId,
+    });
+
+    return ApiResponse.success(res, 'Scheduled notification cancelled successfully', result, 200);
   });
 
   /**
@@ -116,6 +133,31 @@ class NotificationController {
     });
 
     return ApiResponse.success(res, NOTIFICATION_MESSAGES.RETRIEVED, { notification }, 200);
+  });
+
+  /**
+   * Human JWT Dashboard Handler: POST /api/v1/projects/:projectId/notifications/:notificationId/cancel
+   */
+  cancelDashboard = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { projectId, notificationId } = req.params;
+
+    const project = await projectRepository.findProjectById(projectId);
+    if (!project) {
+      throw new NotFoundError(NOTIFICATION_MESSAGES.PROJECT_NOT_FOUND);
+    }
+
+    const membership = await organizationRepository.findMembership(project.organizationId, userId);
+    if (!membership) {
+      throw new AuthorizationError(NOTIFICATION_MESSAGES.ORGANIZATION_FORBIDDEN);
+    }
+
+    const result = await notificationService.cancelNotification({
+      projectId,
+      notificationId,
+    });
+
+    return ApiResponse.success(res, 'Scheduled notification cancelled successfully', result, 200);
   });
 }
 

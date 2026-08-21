@@ -7,10 +7,11 @@ const templateRoutes = require('../modules/templates/template.routes');
 const notificationRoutes = require('../modules/notifications/notification.routes');
 const webhookRoutes = require('../modules/webhooks/webhook.routes');
 const providerWebhookRoutes = require('../modules/webhooks/provider-webhook.routes');
+const analyticsRoutes = require('../modules/analytics/analytics.routes');
 const notificationController = require('../modules/notifications/notification.controller');
 const authenticate = require('../middlewares/auth.middleware');
 const validate = require('../middlewares/validation.middleware');
-const { listNotificationsSchema, getNotificationSchema } = require('../modules/notifications/notification.validation');
+const { listNotificationsSchema, getNotificationSchema, cancelNotificationSchema } = require('../modules/notifications/notification.validation');
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use('/organizations/:organizationId/projects', projectRoutes);
 router.use('/projects/:projectId/api-keys', apiKeyRoutes);
 router.use('/projects/:projectId/templates', templateRoutes);
 router.use('/projects/:projectId/webhooks', webhookRoutes);
+router.use('/analytics', analyticsRoutes);
 
 // Unauthenticated Inbound Provider Webhook Callback Routes
 router.use('/webhooks', providerWebhookRoutes);
@@ -49,6 +51,12 @@ router.get(
   authenticate,
   validate(getNotificationSchema),
   notificationController.getDashboard
+);
+router.post(
+  '/projects/:projectId/notifications/:notificationId/cancel',
+  authenticate,
+  validate(cancelNotificationSchema),
+  notificationController.cancelDashboard
 );
 
 module.exports = router;

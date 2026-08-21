@@ -1,15 +1,3 @@
-const BaseNotificationProvider = require('../interfaces/notification-provider.interface');
-const ProviderError = require('../../shared/errors/provider-error');
+const MockWhatsappProvider = require('./mock-whatsapp.provider');
 
-class WhatsappProvider extends BaseNotificationProvider {
-  constructor() {
-    super();
-    this.name = 'WHATSAPP_PROVIDER';
-  }
-
-  async send({ recipient, body }) {
-    throw new ProviderError('Delivery provider for WHATSAPP channel is not configured in Phase 6', 422);
-  }
-}
-
-module.exports = new WhatsappProvider();
+module.exports = new MockWhatsappProvider();

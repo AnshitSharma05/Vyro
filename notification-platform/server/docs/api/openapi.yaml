@@ -674,6 +674,11 @@ paths:
                 - template
                 - recipient
               properties:
+                channel:
+                  type: string
+                  enum: [EMAIL, SMS, WHATSAPP, PUSH]
+                  example: EMAIL
+                  description: Target delivery channel (EMAIL, SMS, WHATSAPP, PUSH). Defaults to template channel if omitted.
                 template:
                   type: string
                   example: order-confirmed
@@ -681,18 +686,23 @@ paths:
                 recipient:
                   type: string
                   example: user@example.com
-                  description: Recipient address or number matching template channel
+                  description: Recipient email address, phone number (+E.164), or device token
                 data:
                   type: object
                   example:
                     name: Anshit
                     orderId: ORD-12345
                   description: Dynamic template variables payload
+                scheduledAt:
+                  type: string
+                  format: date-time
+                  example: "2026-08-25T10:00:00Z"
+                  description: Optional ISO-8601 timestamp for scheduling future notification dispatch
       responses:
         '202':
           description: Notification request accepted for asynchronous background processing (or idempotent replay of existing notification)
         '400':
-          description: Validation error (e.g. invalid email format or missing required variables)
+          description: Validation error (e.g. invalid email format, missing required variables, or scheduledAt in past)
         '401':
           description: Invalid, missing, or revoked X-API-Key
         '404':
@@ -705,6 +715,28 @@ paths:
           description: Rate limit exceeded for this project (Includes Retry-After header)
         '503':
           description: Service temporarily unavailable (Redis rate limit infrastructure outage)
+
+  /notifications/{notificationId}/cancel:
+    post:
+      summary: Cancel a scheduled notification before execution (Machine X-API-Key authenticated)
+      tags:
+        - Notifications (Machine API)
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Scheduled notification cancelled successfully
+        '404':
+          description: Notification not found
+        '409':
+          description: Notification not cancellable (Already sent, delivered, failed, or cancelled)
 
   /webhooks/providers/{provider}:
     post:
@@ -783,6 +815,64 @@ paths:
       responses:
         '200':
           description: Webhooks retrieved successfully
+
+  /analytics/overview:
+    get:
+      summary: Get project analytics overview, summary stats, and time-series timeline (Human JWT authenticated)
+      tags:
+        - Analytics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [today, 7d, 30d, this_month, custom]
+            default: 7d
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Analytics overview retrieved successfully
+
+  /analytics/channels:
+    get:
+      summary: Get channel distribution analytics for a project (Human JWT authenticated)
+      tags:
+        - Analytics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [today, 7d, 30d, this_month, custom]
+            default: 7d
+      responses:
+        '200':
+          description: Channel analytics retrieved successfully
 
   /notifications:
     get:

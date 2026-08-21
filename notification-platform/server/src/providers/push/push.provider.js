@@ -1,15 +1,3 @@
-const BaseNotificationProvider = require('../interfaces/notification-provider.interface');
-const ProviderError = require('../../shared/errors/provider-error');
+const FcmPushProvider = require('./fcm.provider');
 
-class PushProvider extends BaseNotificationProvider {
-  constructor() {
-    super();
-    this.name = 'PUSH_PROVIDER';
-  }
-
-  async send({ recipient, body }) {
-    throw new ProviderError('Delivery provider for PUSH channel is not configured in Phase 6', 422);
-  }
-}
-
-module.exports = new PushProvider();
+module.exports = new FcmPushProvider();

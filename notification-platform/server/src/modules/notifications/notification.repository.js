@@ -18,7 +18,7 @@ class NotificationRepository {
     return trimmed;
   }
 
-  async create({ projectId, templateId, channel, recipient, status = 'PENDING', idempotencyKey, requestHash, metadata }) {
+  async create({ projectId, templateId, channel, recipient, status = 'PENDING', idempotencyKey, requestHash, metadata, scheduledAt }) {
     return prisma.notification.create({
       data: {
         projectId,
@@ -29,6 +29,7 @@ class NotificationRepository {
         idempotencyKey: idempotencyKey || null,
         requestHash: requestHash || null,
         metadata: metadata || null,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
       },
     });
   }
@@ -154,6 +155,20 @@ class NotificationRepository {
     }
 
     return notification;
+  }
+
+  async cancelScheduledNotification(id, projectId) {
+    return prisma.notification.updateMany({
+      where: {
+        id,
+        projectId,
+        status: 'SCHEDULED',
+      },
+      data: {
+        status: 'CANCELLED',
+        cancelledAt: new Date(),
+      },
+    });
   }
 }
 

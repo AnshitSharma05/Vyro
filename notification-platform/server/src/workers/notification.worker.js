@@ -25,12 +25,12 @@ async function processNotificationJob(job) {
   const existingAttemptsCount = await notificationRepository.getAttemptCount(notificationId);
   const currentAttemptNumber = existingAttemptsCount + 1;
 
-  // 2. Atomic Status Transition (PENDING or RETRYING -> PROCESSING)
+  // 2. Atomic Status Transition (SCHEDULED, PENDING, or RETRYING -> PROCESSING)
   const transitionResult = await prisma.notification.updateMany({
     where: {
       id: notificationId,
       status: {
-        in: [NOTIFICATION_STATUS.PENDING, NOTIFICATION_STATUS.RETRYING],
+        in: [NOTIFICATION_STATUS.SCHEDULED, NOTIFICATION_STATUS.PENDING, NOTIFICATION_STATUS.RETRYING],
       },
     },
     data: {
@@ -40,12 +40,21 @@ async function processNotificationJob(job) {
 
   if (transitionResult.count === 0) {
     const existing = await prisma.notification.findUnique({ where: { id: notificationId } });
-    if (existing && (existing.status === NOTIFICATION_STATUS.SENT || existing.status === NOTIFICATION_STATUS.FAILED)) {
-      logger.warn(
-        { jobId: job.id, notificationId, status: existing.status },
-        'Notification is already terminal. Skipping duplicate job execution.'
-      );
-      return;
+    if (existing) {
+      if (existing.status === NOTIFICATION_STATUS.CANCELLED) {
+        logger.info(
+          { jobId: job.id, notificationId },
+          'Scheduled notification was cancelled. Skipping worker execution.'
+        );
+        return;
+      }
+      if (existing.status === NOTIFICATION_STATUS.SENT || existing.status === NOTIFICATION_STATUS.FAILED || existing.status === NOTIFICATION_STATUS.DELIVERED) {
+        logger.warn(
+          { jobId: job.id, notificationId, status: existing.status },
+          'Notification is already terminal. Skipping duplicate job execution.'
+        );
+        return;
+      }
     }
   }
 

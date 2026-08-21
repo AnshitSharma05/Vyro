@@ -3,18 +3,27 @@ import { CheckCircle2, XCircle, Clock, Loader2, AlertCircle, RefreshCw } from 'l
 
 export const NotificationStatusBadge = ({ status }) => {
   switch (status) {
+    case 'DELIVERED':
     case 'SENT':
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
           <CheckCircle2 className="w-3.5 h-3.5" />
-          SENT
+          {status}
         </span>
       );
+    case 'SCHEDULED':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <Clock className="w-3.5 h-3.5 text-indigo-600" />
+          SCHEDULED
+        </span>
+      );
+    case 'BOUNCED':
     case 'FAILED':
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-rose-50 text-rose-700 border border-rose-200">
           <XCircle className="w-3.5 h-3.5" />
-          FAILED
+          {status}
         </span>
       );
     case 'RETRYING':
