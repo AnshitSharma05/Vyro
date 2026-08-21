@@ -5,6 +5,8 @@ const projectRoutes = require('../modules/projects/project.routes');
 const apiKeyRoutes = require('../modules/api-keys/api-key.routes');
 const templateRoutes = require('../modules/templates/template.routes');
 const notificationRoutes = require('../modules/notifications/notification.routes');
+const webhookRoutes = require('../modules/webhooks/webhook.routes');
+const providerWebhookRoutes = require('../modules/webhooks/provider-webhook.routes');
 const notificationController = require('../modules/notifications/notification.controller');
 const authenticate = require('../middlewares/auth.middleware');
 const validate = require('../middlewares/validation.middleware');
@@ -27,6 +29,10 @@ router.use('/organizations', organizationRoutes);
 router.use('/organizations/:organizationId/projects', projectRoutes);
 router.use('/projects/:projectId/api-keys', apiKeyRoutes);
 router.use('/projects/:projectId/templates', templateRoutes);
+router.use('/projects/:projectId/webhooks', webhookRoutes);
+
+// Unauthenticated Inbound Provider Webhook Callback Routes
+router.use('/webhooks', providerWebhookRoutes);
 
 // Machine-to-machine notification routes (X-API-Key authenticated)
 router.use('/notifications', notificationRoutes);

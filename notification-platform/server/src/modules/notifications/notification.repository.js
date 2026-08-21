@@ -18,7 +18,7 @@ class NotificationRepository {
     return trimmed;
   }
 
-  async create({ projectId, templateId, channel, recipient, status = 'PENDING', metadata }) {
+  async create({ projectId, templateId, channel, recipient, status = 'PENDING', idempotencyKey, requestHash, metadata }) {
     return prisma.notification.create({
       data: {
         projectId,
@@ -26,7 +26,26 @@ class NotificationRepository {
         channel,
         recipient,
         status,
+        idempotencyKey: idempotencyKey || null,
+        requestHash: requestHash || null,
         metadata: metadata || null,
+      },
+    });
+  }
+
+  async findByIdempotencyKey(projectId, idempotencyKey) {
+    if (!idempotencyKey) return null;
+    return prisma.notification.findUnique({
+      where: {
+        projectId_idempotencyKey: {
+          projectId,
+          idempotencyKey,
+        },
+      },
+      include: {
+        attempts: {
+          orderBy: { attemptedAt: 'asc' },
+        },
       },
     });
   }

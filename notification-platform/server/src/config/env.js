@@ -12,6 +12,10 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('7d'),
   BCRYPT_SALT_ROUNDS: z.string().transform((val) => parseInt(val, 10)).default('10'),
   WORKER_CONCURRENCY: z.string().transform((val) => parseInt(val, 10)).default('5'),
+  NOTIFICATION_RATE_LIMIT: z.string().transform((val) => parseInt(val, 10)).default('100'),
+  NOTIFICATION_RATE_WINDOW_SECONDS: z.string().transform((val) => parseInt(val, 10)).default('60'),
+  AUTH_LOGIN_LIMIT: z.string().transform((val) => parseInt(val, 10)).default('5'),
+  AUTH_LOGIN_WINDOW_SECONDS: z.string().transform((val) => parseInt(val, 10)).default('60'),
 });
 
 const parseEnv = () => {
@@ -30,6 +34,10 @@ const parseEnv = () => {
         JWT_EXPIRES_IN: '1h',
         BCRYPT_SALT_ROUNDS: 4,
         WORKER_CONCURRENCY: 5,
+        NOTIFICATION_RATE_LIMIT: 100,
+        NOTIFICATION_RATE_WINDOW_SECONDS: 60,
+        AUTH_LOGIN_LIMIT: 5,
+        AUTH_LOGIN_WINDOW_SECONDS: 60,
       };
     }
     throw new Error('Environment variable validation failed');

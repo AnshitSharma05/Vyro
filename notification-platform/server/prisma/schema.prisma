@@ -33,6 +33,9 @@ enum NotificationStatus {
   FAILED
   CANCELLED
   RETRYING
+  DELIVERED
+  BOUNCED
+  COMPLAINED
 }
 
 enum AttemptStatus {
@@ -106,6 +109,7 @@ model Project {
   templates      Template[]
   notifications  Notification[]
   webhooks       Webhook[]
+  events         Event[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -152,21 +156,25 @@ model Template {
 
 /// Represents a single notification request created by a client application.
 model Notification {
-  id         String                @id @default(uuid())
-  projectId  String
-  templateId String?
-  channel    Channel
-  recipient  String
-  status     NotificationStatus    @default(PENDING)
-  metadata   Json?
-  createdAt  DateTime              @default(now())
-  updatedAt  DateTime              @updatedAt
-  sentAt     DateTime?
-  failedAt   DateTime?
-  project    Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  template   Template?             @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  attempts   NotificationAttempt[]
+  id             String                @id @default(uuid())
+  projectId      String
+  templateId     String?
+  channel        Channel
+  recipient      String
+  status         NotificationStatus    @default(PENDING)
+  idempotencyKey String?
+  requestHash    String?
+  metadata       Json?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  sentAt         DateTime?
+  failedAt       DateTime?
+  project        Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template       Template?             @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  attempts       NotificationAttempt[]
+  events         Event[]
 
+  @@unique([projectId, idempotencyKey])
   @@index([projectId, createdAt(sort: Desc)])
   @@index([projectId, status])
   @@index([projectId, channel])
@@ -191,6 +199,28 @@ model NotificationAttempt {
   @@map("notification_attempts")
 }
 
+/// Represents a normalized lifecycle event received from a delivery provider or system.
+model Event {
+  id                String            @id @default(uuid())
+  notificationId    String?
+  projectId         String
+  provider          String
+  providerEventId   String?
+  providerMessageId String?
+  type              String
+  metadata          Json?
+  occurredAt        DateTime          @default(now())
+  createdAt         DateTime          @default(now())
+  notification      Notification?     @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  project           Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliveries        WebhookDelivery[]
+
+  @@unique([provider, providerEventId])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([notificationId])
+  @@map("events")
+}
+
 /// Represents a webhook endpoint configured by a client application.
 model Webhook {
   id         String            @id @default(uuid())
@@ -212,6 +242,7 @@ model Webhook {
 model WebhookDelivery {
   id             String                @id @default(uuid())
   webhookId      String
+  eventId        String?
   eventType      String
   payload        Json
   status         WebhookDeliveryStatus @default(PENDING)
@@ -222,8 +253,10 @@ model WebhookDelivery {
   deliveredAt    DateTime?
   nextRetryAt    DateTime?
   webhook        Webhook               @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  event          Event?                @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
   @@index([webhookId, createdAt(sort: Desc)])
   @@index([status, nextRetryAt])
+  @@index([eventId])
   @@map("webhook_deliveries")
 }

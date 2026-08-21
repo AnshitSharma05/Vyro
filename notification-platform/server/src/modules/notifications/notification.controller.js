@@ -15,15 +15,18 @@ class NotificationController {
     // req.project is attached by api-key.middleware.js
     const projectId = req.project.id;
     const { template, recipient, data } = req.body;
+    const idempotencyKey = req.headers['idempotency-key'] || req.headers['x-idempotency-key'];
 
     const result = await notificationService.sendNotification({
       projectId,
       templateName: template,
       recipient,
       data,
+      idempotencyKey,
     });
 
-    return ApiResponse.success(res, NOTIFICATION_MESSAGES.ACCEPTED, result, 202);
+    const statusCode = result.status === 'SENT' ? 200 : 202;
+    return ApiResponse.success(res, NOTIFICATION_MESSAGES.ACCEPTED, result, statusCode);
   });
 
   /**

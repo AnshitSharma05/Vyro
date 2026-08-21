@@ -656,6 +656,14 @@ paths:
         - Notifications (Machine API)
       security:
         - ApiKeyAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            maxLength: 255
+          description: Optional unique key to prevent duplicate notification creation on request retries
       requestBody:
         required: true
         content:
@@ -682,15 +690,99 @@ paths:
                   description: Dynamic template variables payload
       responses:
         '202':
-          description: Notification request accepted for asynchronous background processing
+          description: Notification request accepted for asynchronous background processing (or idempotent replay of existing notification)
         '400':
           description: Validation error (e.g. invalid email format or missing required variables)
         '401':
           description: Invalid, missing, or revoked X-API-Key
         '404':
           description: Template not found in project
+        '409':
+          description: Idempotency Key Reused - Key was previously used with a different request payload
         '422':
           description: Delivery provider for channel is unconfigured
+        '429':
+          description: Rate limit exceeded for this project (Includes Retry-After header)
+        '503':
+          description: Service temporarily unavailable (Redis rate limit infrastructure outage)
+
+  /webhooks/providers/{provider}:
+    post:
+      summary: Receive inbound delivery event webhooks from external providers
+      tags:
+        - Webhooks (Provider Inbound)
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            example: mock
+        - name: X-Provider-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Provider HMAC SHA-256 webhook signature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Inbound provider webhook event processed successfully
+        '401':
+          description: Invalid provider signature
+
+  /projects/{projectId}/webhooks:
+    post:
+      summary: Create a new customer webhook endpoint (Human JWT authenticated)
+      tags:
+        - Webhooks (Customer Management)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  example: https://client-app.com/webhooks/notifications
+      responses:
+        '201':
+          description: Webhook created successfully (Returns secret ONCE)
+        '400':
+          description: Invalid URL format or SSRF validation failure
+    get:
+      summary: List webhooks for a project (Human JWT authenticated)
+      tags:
+        - Webhooks (Customer Management)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Webhooks retrieved successfully
 
   /notifications:
     get:
