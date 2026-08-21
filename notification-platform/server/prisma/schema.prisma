@@ -59,6 +59,18 @@ enum AttemptStatus {
   FAILED
 }
 
+enum WorkflowStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ExecutionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum WebhookDeliveryStatus {
   PENDING
   SUCCESS
@@ -87,10 +99,13 @@ model Organization {
   id        String               @id @default(uuid())
   name      String
   slug      String               @unique
+  planId    String?
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
+  plan      Plan?                @relation(fields: [planId], references: [id], onDelete: SetNull)
   members   OrganizationMember[]
   projects  Project[]
+  usages    OrganizationUsage[]
 
   @@map("organizations")
 }
@@ -128,6 +143,8 @@ model Project {
   events         Event[]
   usageRecords   UsageRecord[]
   recipients     Recipient[]
+  workflows      Workflow[]
+  eventLogs      EventLog[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -358,4 +375,147 @@ model UsageRecord {
   @@unique([projectId, date, channel])
   @@index([projectId, date])
   @@map("usage_records")
+}
+
+/// Represents a business event ingested from a customer application.
+model EventLog {
+  id              String              @id @default(uuid())
+  projectId       String
+  eventName       String
+  externalEventId String
+  recipient       Json
+  payload         Json
+  status          ExecutionStatus     @default(PENDING)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  project         Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  executions      WorkflowExecution[]
+
+  @@unique([projectId, externalEventId])
+  @@index([projectId, eventName])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@map("event_logs")
+}
+
+/// Represents an event-driven notification automation workflow rule.
+model Workflow {
+  id          String              @id @default(uuid())
+  projectId   String
+  name        String
+  description String?
+  eventName   String
+  status      WorkflowStatus      @default(ACTIVE)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  project     Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actions     WorkflowAction[]
+  executions  WorkflowExecution[]
+
+  @@unique([projectId, name])
+  @@index([projectId, eventName, status])
+  @@map("workflows")
+}
+
+/// Represents an ordered notification action inside a workflow.
+model WorkflowAction {
+  id           String                   @id @default(uuid())
+  workflowId   String
+  order        Int                      @default(1)
+  channel      Channel
+  category     NotificationCategory     @default(TRANSACTIONAL)
+  templateName String
+  delaySeconds Int                      @default(0)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  workflow     Workflow                 @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  executions   WorkflowActionExecution[]
+
+  @@unique([workflowId, order])
+  @@index([workflowId])
+  @@map("workflow_actions")
+}
+
+/// Represents an instance of a workflow executing for an ingested event.
+model WorkflowExecution {
+  id          String                    @id @default(uuid())
+  workflowId  String
+  eventId     String
+  status      ExecutionStatus           @default(PENDING)
+  startedAt   DateTime                  @default(now())
+  completedAt DateTime?
+  error       String?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  workflow    Workflow                  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  eventLog    EventLog                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  actions     WorkflowActionExecution[]
+
+  @@unique([eventId, workflowId])
+  @@index([workflowId, status])
+  @@map("workflow_executions")
+}
+
+/// Represents the execution tracking of an individual action inside a workflow execution.
+model WorkflowActionExecution {
+  id                  String            @id @default(uuid())
+  workflowExecutionId String
+  workflowActionId    String
+  notificationId      String?
+  status              ExecutionStatus   @default(PENDING)
+  scheduledAt         DateTime?
+  executedAt          DateTime?
+  error               String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  workflowExecution   WorkflowExecution @relation(fields: [workflowExecutionId], references: [id], onDelete: Cascade)
+  workflowAction      WorkflowAction    @relation(fields: [workflowActionId], references: [id], onDelete: Cascade)
+
+  @@index([workflowExecutionId])
+  @@map("workflow_action_executions")
+}
+
+/// Represents a subscription plan (FREE, PRO, BUSINESS).
+model Plan {
+  id          String         @id @default(uuid())
+  code        String         @unique
+  name        String
+  description String?
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  limits      PlanLimit[]
+  orgs        Organization[]
+
+  @@map("plans")
+}
+
+/// Represents a plan metric limit (e.g. NOTIFICATIONS -> 1000).
+model PlanLimit {
+  id        String   @id @default(uuid())
+  planId    String
+  metric    String
+  limit     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, metric])
+  @@map("plan_limits")
+}
+
+/// Represents monthly metered consumption per organization and metric.
+model OrganizationUsage {
+  id             String       @id @default(uuid())
+  organizationId String
+  metric         String
+  periodStart    DateTime
+  periodEnd      DateTime
+  quantity       Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, metric, periodStart])
+  @@index([organizationId, periodStart])
+  @@map("organization_usages")
 }

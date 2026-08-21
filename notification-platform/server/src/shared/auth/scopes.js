@@ -14,6 +14,12 @@ const API_KEY_SCOPES = Object.freeze({
   PREFERENCES_WRITE: 'preferences:write',
   DEVICES_READ: 'devices:read',
   DEVICES_WRITE: 'devices:write',
+  EVENTS_WRITE: 'events:write',
+  EVENTS_READ: 'events:read',
+  WORKFLOWS_READ: 'workflows:read',
+  WORKFLOWS_WRITE: 'workflows:write',
+  USAGE_READ: 'usage:read',
+  PLANS_READ: 'plans:read',
 });
 
 const VALID_SCOPES_SET = new Set(Object.values(API_KEY_SCOPES));

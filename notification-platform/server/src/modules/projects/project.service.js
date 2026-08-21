@@ -36,6 +36,9 @@ class ProjectService {
       throw new AuthorizationError(PROJECT_MESSAGES.INSUFFICIENT_PERMISSIONS);
     }
 
+    const quotaService = require('../../shared/quotas/quota.service');
+    await quotaService.checkResourceQuota(organizationId, 'PROJECTS');
+
     const baseSlug = this.generateSlug(name);
     const slug = await this.resolveUniqueSlug(organizationId, baseSlug);
 

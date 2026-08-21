@@ -1,0 +1,31 @@
+const CHANNELS = Object.freeze({
+  EMAIL: 'EMAIL',
+  SMS: 'SMS',
+  WHATSAPP: 'WHATSAPP',
+  PUSH: 'PUSH',
+});
+
+const CATEGORIES = Object.freeze({
+  TRANSACTIONAL: 'TRANSACTIONAL',
+  SECURITY: 'SECURITY',
+  MARKETING: 'MARKETING',
+  SYSTEM: 'SYSTEM',
+});
+
+const DEVICE_PLATFORMS = Object.freeze({
+  IOS: 'IOS',
+  ANDROID: 'ANDROID',
+  WEB: 'WEB',
+});
+
+const WORKFLOW_STATUSES = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+});
+
+module.exports = {
+  CHANNELS,
+  CATEGORIES,
+  DEVICE_PLATFORMS,
+  WORKFLOW_STATUSES,
+};

@@ -47,6 +47,15 @@ class NotificationService {
     const deliveryPolicyService = require('../../shared/notification/delivery-policy.service');
     const recipientService = require('../recipients/recipient.service');
     const deviceService = require('../devices/device.service');
+    const projectRepository = require('../projects/project.repository');
+    const quotaService = require('../../shared/quotas/quota.service');
+    const usageService = require('../usage/usage.service');
+
+    // 0. Quota Check (Resolve Organization ID & Check NOTIFICATIONS Quota)
+    const project = await projectRepository.findProjectById(projectId);
+    if (project && project.organizationId) {
+      await quotaService.checkMeteredQuota(project.organizationId, 'NOTIFICATIONS', 1);
+    }
 
     // 1. Validate & sanitize idempotency key format if present
     const validKey = validateIdempotencyKey(idempotencyKey);
@@ -247,6 +256,10 @@ class NotificationService {
           counterField: 'totalCount',
         })
         .catch(() => {});
+
+      if (project && project.organizationId) {
+        usageService.recordUsage(project.organizationId, 'NOTIFICATIONS', 1).catch(() => {});
+      }
     } catch (createErr) {
       if (validKey && createErr.code === 'P2002') {
         const existing = await notificationRepository.findByIdempotencyKey(projectId, validKey);

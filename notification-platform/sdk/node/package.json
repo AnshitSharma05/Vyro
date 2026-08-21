@@ -1,7 +1,29 @@
 {
-  "name": "@notification-platform/node",
+  "name": "notification-platform-node",
   "version": "1.0.0",
-  "description": "Node.js SDK for Notification Platform",
+  "description": "Official Node.js SDK for the Notification Platform (Notification-as-a-Service)",
   "main": "src/index.js",
-  "scripts": {}
+  "types": "types/index.d.ts",
+  "scripts": {
+    "test": "jest --detectOpenHandles"
+  },
+  "keywords": [
+    "notification",
+    "naas",
+    "sdk",
+    "email",
+    "sms",
+    "whatsapp",
+    "push",
+    "events",
+    "workflows"
+  ],
+  "author": "Notification Platform Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
 }

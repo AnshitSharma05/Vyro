@@ -16,6 +16,10 @@ const { listNotificationsSchema, getNotificationSchema, cancelNotificationSchema
 const recipientRoutes = require('../modules/recipients/recipient.routes');
 const preferenceRoutes = require('../modules/preferences/preference.routes');
 const deviceRoutes = require('../modules/devices/device.routes');
+const eventRoutes = require('../modules/events/event.routes');
+const workflowRoutes = require('../modules/workflows/workflow.routes');
+const planRoutes = require('../modules/plans/plan.routes');
+const usageRoutes = require('../modules/usage/usage.routes');
 
 const router = Router();
 
@@ -36,11 +40,15 @@ router.use('/projects/:projectId/api-keys', apiKeyRoutes);
 router.use('/projects/:projectId/templates', templateRoutes);
 router.use('/projects/:projectId/webhooks', webhookRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/plans', planRoutes);
+router.use('/usage', usageRoutes);
 
-// Recipient, Preference & Device Machine API Routes (X-API-Key authenticated)
+// Recipient, Preference, Device, Event & Workflow Machine API Routes (X-API-Key authenticated)
 router.use('/recipients', recipientRoutes);
 router.use('/recipients', preferenceRoutes);
 router.use('/recipients', deviceRoutes);
+router.use('/events', eventRoutes);
+router.use('/workflows', workflowRoutes);
 
 // Unauthenticated Inbound Provider Webhook Callback Routes
 router.use('/webhooks', providerWebhookRoutes);
