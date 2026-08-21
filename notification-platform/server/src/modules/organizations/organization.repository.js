@@ -91,6 +91,44 @@ class OrganizationRepository {
       data,
     });
   }
+
+  async findMemberById(id) {
+    return prisma.organizationMember.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: { id: true, email: true, name: true },
+        },
+      },
+    });
+  }
+
+  async updateMemberRole(id, role) {
+    return prisma.organizationMember.update({
+      where: { id },
+      data: { role },
+      include: {
+        user: {
+          select: { id: true, email: true, name: true },
+        },
+      },
+    });
+  }
+
+  async removeMember(id) {
+    return prisma.organizationMember.delete({
+      where: { id },
+    });
+  }
+
+  async countOwners(organizationId) {
+    return prisma.organizationMember.count({
+      where: {
+        organizationId,
+        role: 'OWNER',
+      },
+    });
+  }
 }
 
 module.exports = new OrganizationRepository();

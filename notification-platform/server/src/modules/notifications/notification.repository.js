@@ -51,13 +51,14 @@ class NotificationRepository {
     });
   }
 
-  async createAttempt({ notificationId, provider, status, attemptNumber = 1, errorCode, errorMessage, deliveredAt }) {
+  async createAttempt({ notificationId, provider, status, attemptNumber = 1, attemptReason, errorCode, errorMessage, deliveredAt }) {
     return prisma.notificationAttempt.create({
       data: {
         notificationId,
         provider,
         status,
         attemptNumber: attemptNumber || 1,
+        attemptReason: attemptReason || null,
         errorCode: errorCode || null,
         errorMessage: this.sanitizeErrorMessage(errorMessage),
         deliveredAt: deliveredAt ? new Date(deliveredAt) : null,

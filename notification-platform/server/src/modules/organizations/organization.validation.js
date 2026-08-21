@@ -30,8 +30,30 @@ const organizationIdParamSchema = z.object({
   }),
 });
 
+const updateMemberRoleSchema = z.object({
+  params: z.object({
+    organizationId: z.string().uuid('Invalid Organization ID format'),
+    memberId: z.string().uuid('Invalid Member ID format'),
+  }),
+  body: z.object({
+    role: z.enum(['OWNER', 'ADMIN', 'MEMBER', 'VIEWER'], {
+      required_error: 'Role is required',
+      invalid_type_error: 'Invalid role. Supported: OWNER, ADMIN, MEMBER, VIEWER',
+    }),
+  }),
+});
+
+const removeMemberSchema = z.object({
+  params: z.object({
+    organizationId: z.string().uuid('Invalid Organization ID format'),
+    memberId: z.string().uuid('Invalid Member ID format'),
+  }),
+});
+
 module.exports = {
   createOrganizationSchema,
   updateOrganizationSchema,
   organizationIdParamSchema,
+  updateMemberRoleSchema,
+  removeMemberSchema,
 };

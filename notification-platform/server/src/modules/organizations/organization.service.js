@@ -99,6 +99,41 @@ class OrganizationService {
       joinedAt: m.createdAt,
     }));
   }
+
+  async updateMemberRole({ organizationId, targetMemberId, role, actorUserId }) {
+    const actorMembership = await organizationRepository.findMembership(organizationId, actorUserId);
+    if (!actorMembership) {
+      throw new AuthorizationError(ORGANIZATION_MESSAGES.FORBIDDEN);
+    }
+
+    const authorizationService = require('../../shared/auth/authorization.service');
+    await authorizationService.validateRoleUpdate({
+      organizationId,
+      actorUserId,
+      actorRole: actorMembership.role,
+      targetMemberId,
+      newRole: role,
+    });
+
+    return organizationRepository.updateMemberRole(targetMemberId, role);
+  }
+
+  async removeMember({ organizationId, targetMemberId, actorUserId }) {
+    const actorMembership = await organizationRepository.findMembership(organizationId, actorUserId);
+    if (!actorMembership) {
+      throw new AuthorizationError(ORGANIZATION_MESSAGES.FORBIDDEN);
+    }
+
+    const authorizationService = require('../../shared/auth/authorization.service');
+    await authorizationService.validateMemberRemoval({
+      organizationId,
+      actorUserId,
+      actorRole: actorMembership.role,
+      targetMemberId,
+    });
+
+    return organizationRepository.removeMember(targetMemberId);
+  }
 }
 
 module.exports = new OrganizationService();

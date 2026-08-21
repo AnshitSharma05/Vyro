@@ -41,12 +41,16 @@ class NotificationService {
   }
 
   /**
-   * Asynchronous notification dispatch service method with idempotency and scheduling protection.
+   * Asynchronous notification dispatch service method with idempotency, scheduling, and delivery preferences.
    */
-  async sendNotification({ projectId, channel = null, templateName, recipient, data = {}, idempotencyKey = null, scheduledAt = null }) {
+  async sendNotification({ projectId, channel = null, templateName, category = 'TRANSACTIONAL', recipient, data = {}, idempotencyKey = null, scheduledAt = null }) {
+    const deliveryPolicyService = require('../../shared/notification/delivery-policy.service');
+    const recipientService = require('../recipients/recipient.service');
+    const deviceService = require('../devices/device.service');
+
     // 1. Validate & sanitize idempotency key format if present
     const validKey = validateIdempotencyKey(idempotencyKey);
-    const requestHash = computeRequestHash({ channel, template: templateName, recipient, data, scheduledAt });
+    const requestHash = computeRequestHash({ channel, template: templateName, category, recipient, data, scheduledAt });
 
     // 2. Validate scheduledAt timestamp if present
     let isScheduled = false;
@@ -64,7 +68,6 @@ class NotificationService {
         throw new ValidationError('scheduledAt must be a future timestamp', null, 'SCHEDULED_TIME_IN_PAST');
       }
 
-      // Max future schedule window (365 days)
       if (scheduledDate.getTime() > now + 365 * 24 * 60 * 60 * 1000) {
         throw new ValidationError('scheduledAt cannot exceed 365 days in the future', null, 'SCHEDULED_TIME_TOO_FAR');
       }
@@ -73,13 +76,10 @@ class NotificationService {
       delayMs = scheduledDate.getTime() - now;
     }
 
-    const initialStatus = isScheduled ? NOTIFICATION_STATUS.SCHEDULED : NOTIFICATION_STATUS.PENDING;
-
     // 3. Check for existing idempotent notification
     if (validKey) {
       const existing = await notificationRepository.findByIdempotencyKey(projectId, validKey);
       if (existing) {
-        // Verify request fingerprint hash matches
         if (existing.requestHash && existing.requestHash !== requestHash) {
           throw new ConflictError(
             'The idempotency key was already used with a different request',
@@ -88,7 +88,6 @@ class NotificationService {
           );
         }
 
-        // Return existing notification metadata (Replay)
         return {
           id: existing.id,
           status: existing.status,
@@ -108,7 +107,6 @@ class NotificationService {
 
     const targetChannel = channel || template.channel;
 
-    // 5. Validate Template & Channel Compatibility
     if (channel && template.channel !== channel) {
       throw new ValidationError(
         `Template "${templateName}" is configured for channel "${template.channel}" but requested channel is "${channel}"`,
@@ -117,8 +115,55 @@ class NotificationService {
       );
     }
 
-    // 6. Validate recipient format for target channel
-    this.validateRecipient(targetChannel, recipient);
+    // 5. Resolve Recipient (External User ID vs Direct String)
+    let recipientId = null;
+    let recipientAddress = '';
+    let recipientEmail = null;
+    let recipientPhone = null;
+    let recipientPreferences = [];
+    let activeDevicesCount = 0;
+    let isDirectRecipient = false;
+
+    if (recipient && typeof recipient === 'object' && recipient.externalUserId) {
+      const rec = await recipientService.getOrCreateRecipient({
+        projectId,
+        externalUserId: recipient.externalUserId,
+        email: recipient.email,
+        phone: recipient.phone,
+      });
+
+      recipientId = rec.id;
+      recipientEmail = rec.email;
+      recipientPhone = rec.phone;
+      recipientPreferences = rec.preferences || [];
+
+      if (targetChannel === 'EMAIL') {
+        recipientAddress = rec.email || '';
+      } else if (targetChannel === 'SMS' || targetChannel === 'WHATSAPP') {
+        recipientAddress = rec.phone || '';
+      } else if (targetChannel === 'PUSH') {
+        const devices = await deviceService.listDevices(projectId, rec.externalUserId);
+        activeDevicesCount = devices.length;
+        recipientAddress = devices.length > 0 ? devices[0].token : '';
+      }
+    } else if (typeof recipient === 'string') {
+      recipientAddress = recipient;
+      isDirectRecipient = true;
+      this.validateRecipient(targetChannel, recipientAddress);
+    } else {
+      throw new ValidationError('Recipient must be a string or an object with externalUserId');
+    }
+
+    // 6. Evaluate Delivery Policy & Preferences
+    const deliveryDecision = deliveryPolicyService.evaluateDelivery({
+      category,
+      channel: targetChannel,
+      recipientEmail,
+      recipientPhone,
+      recipientPreferences,
+      activeDevicesCount,
+      isDirectRecipient,
+    });
 
     // 7. Render template subject and body
     const rendered = templateRenderer.renderTemplate(
@@ -126,7 +171,6 @@ class NotificationService {
       data
     );
 
-    // 8. Create initial Notification record
     const initialMetadata = {
       subject: rendered.subject,
       body: rendered.body,
@@ -134,21 +178,67 @@ class NotificationService {
       templateData: data,
     };
 
+    // If suppressed by policy or preference
+    if (!deliveryDecision.allowed) {
+      const suppressedNotification = await notificationRepository.create({
+        projectId,
+        templateId: template.id,
+        channel: targetChannel,
+        recipient: recipientAddress || (typeof recipient === 'string' ? recipient : recipient.externalUserId),
+        status: NOTIFICATION_STATUS.SUPPRESSED,
+        idempotencyKey: validKey,
+        requestHash,
+        metadata: {
+          ...initialMetadata,
+          category,
+          suppressionReason: deliveryDecision.reason,
+        },
+        scheduledAt: null,
+      });
+
+      // Dispatch customer webhook event for notification.suppressed
+      const suppressedEvent = {
+        id: `evt_sup_${suppressedNotification.id}`,
+        projectId,
+        type: 'notification.suppressed',
+        createdAt: new Date(),
+        data: {
+          notificationId: suppressedNotification.id,
+          reason: deliveryDecision.reason,
+        },
+      };
+      webhookService.dispatchCustomerWebhooksForEvent(suppressedEvent, suppressedNotification).catch(() => {});
+
+      return {
+        id: suppressedNotification.id,
+        status: NOTIFICATION_STATUS.SUPPRESSED,
+        channel: suppressedNotification.channel,
+        recipient: suppressedNotification.recipient,
+        suppressionReason: deliveryDecision.reason,
+        createdAt: suppressedNotification.createdAt,
+      };
+    }
+
+    // 8. Create initial Notification record (PENDING or SCHEDULED)
+    const initialStatus = isScheduled ? NOTIFICATION_STATUS.SCHEDULED : NOTIFICATION_STATUS.PENDING;
+
     let notification;
     try {
       notification = await notificationRepository.create({
         projectId,
         templateId: template.id,
         channel: targetChannel,
-        recipient,
+        recipient: recipientAddress,
         status: initialStatus,
         idempotencyKey: validKey,
         requestHash,
-        metadata: initialMetadata,
+        metadata: {
+          ...initialMetadata,
+          category,
+        },
         scheduledAt: isScheduled ? scheduledDate : null,
       });
 
-      // Non-blocking usage metering record for notification creation
       analyticsService
         .recordUsageEvent({
           projectId,
@@ -158,7 +248,6 @@ class NotificationService {
         })
         .catch(() => {});
     } catch (createErr) {
-      // Catch concurrent unique constraint violation (P2002) for idempotency key
       if (validKey && createErr.code === 'P2002') {
         const existing = await notificationRepository.findByIdempotencyKey(projectId, validKey);
         if (existing) {
@@ -182,7 +271,7 @@ class NotificationService {
       throw createErr;
     }
 
-    // 8. Enqueue job into BullMQ (Delayed job if scheduled, immediate job if not)
+    // 9. Enqueue job into BullMQ
     try {
       const jobOptions = isScheduled
         ? { delay: delayMs, jobId: `scheduled:${notification.id}` }
@@ -197,7 +286,6 @@ class NotificationService {
       throw new AppError('Failed to enqueue notification for processing', 500);
     }
 
-    // 9. Dispatch customer webhook for scheduled lifecycle event if applicable
     if (isScheduled) {
       const scheduledEvent = {
         id: `evt_sch_${notification.id}`,
@@ -208,7 +296,6 @@ class NotificationService {
       webhookService.dispatchCustomerWebhooksForEvent(scheduledEvent, notification).catch(() => {});
     }
 
-    // 10. Return immediate accepted response
     return {
       id: notification.id,
       status: notification.status,

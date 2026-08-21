@@ -14,21 +14,23 @@ class NotificationController {
   send = asyncHandler(async (req, res) => {
     // req.project is attached by api-key.middleware.js
     const projectId = req.project.id;
-    const { channel, template, recipient, data, scheduledAt } = req.body;
+    const { channel, template, category, recipient, data, scheduledAt } = req.body;
     const idempotencyKey = req.headers['idempotency-key'] || req.headers['x-idempotency-key'];
 
     const result = await notificationService.sendNotification({
       projectId,
       channel,
       templateName: template,
+      category,
       recipient,
       data,
       idempotencyKey,
       scheduledAt,
     });
 
-    const statusCode = result.status === 'SENT' ? 200 : 202;
-    return ApiResponse.success(res, NOTIFICATION_MESSAGES.ACCEPTED, result, statusCode);
+    const statusCode = result.status === 'SENT' || result.status === 'SUPPRESSED' ? 200 : 202;
+    const message = result.status === 'SUPPRESSED' ? 'Notification suppressed by policy or recipient preference' : NOTIFICATION_MESSAGES.ACCEPTED;
+    return ApiResponse.success(res, message, result, statusCode);
   });
 
   /**

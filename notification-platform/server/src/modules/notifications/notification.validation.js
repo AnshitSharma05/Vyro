@@ -9,10 +9,15 @@ const sendNotificationSchema = z.object({
       .string({ required_error: 'Template identifier is required' })
       .trim()
       .min(1, 'Template identifier cannot be empty'),
-    recipient: z
-      .string({ required_error: 'Recipient is required' })
-      .trim()
-      .min(1, 'Recipient cannot be empty'),
+    category: z.enum(['TRANSACTIONAL', 'SECURITY', 'MARKETING', 'SYSTEM']).optional().default('TRANSACTIONAL'),
+    recipient: z.union([
+      z.string().trim().min(1, 'Recipient string cannot be empty'),
+      z.object({
+        externalUserId: z.string().trim().min(1, 'externalUserId is required'),
+        email: z.string().email('Invalid email format').optional(),
+        phone: z.string().optional(),
+      }),
+    ], { required_error: 'Recipient string or object is required' }),
     data: z.record(z.any()).optional().default({}),
     scheduledAt: z.string().datetime({ message: 'scheduledAt must be a valid ISO-8601 datetime string' }).optional(),
   }),

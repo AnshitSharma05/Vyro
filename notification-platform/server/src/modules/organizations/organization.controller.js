@@ -42,6 +42,34 @@ class OrganizationController {
     const members = await organizationService.getOrganizationMembers(organizationId, userId);
     return ApiResponse.success(res, ORGANIZATION_MESSAGES.MEMBERS_LIST_SUCCESS, { members }, 200);
   });
+
+  updateMemberRole = asyncHandler(async (req, res) => {
+    const actorUserId = req.user.id;
+    const { organizationId, memberId } = req.params;
+    const { role } = req.body;
+
+    const updatedMember = await organizationService.updateMemberRole({
+      organizationId,
+      targetMemberId: memberId,
+      role,
+      actorUserId,
+    });
+
+    return ApiResponse.success(res, 'Member role updated successfully', { member: updatedMember }, 200);
+  });
+
+  removeMember = asyncHandler(async (req, res) => {
+    const actorUserId = req.user.id;
+    const { organizationId, memberId } = req.params;
+
+    await organizationService.removeMember({
+      organizationId,
+      targetMemberId: memberId,
+      actorUserId,
+    });
+
+    return ApiResponse.success(res, 'Member removed from organization successfully', null, 200);
+  });
 }
 
 module.exports = new OrganizationController();

@@ -6,6 +6,8 @@ const {
   createOrganizationSchema,
   updateOrganizationSchema,
   organizationIdParamSchema,
+  updateMemberRoleSchema,
+  removeMemberSchema,
 } = require('./organization.validation');
 
 const router = Router();
@@ -17,5 +19,7 @@ router.get('/', organizationController.list);
 router.get('/:organizationId', validate(organizationIdParamSchema), organizationController.get);
 router.patch('/:organizationId', validate(updateOrganizationSchema), organizationController.update);
 router.get('/:organizationId/members', validate(organizationIdParamSchema), organizationController.listMembers);
+router.patch('/:organizationId/members/:memberId/role', validate(updateMemberRoleSchema), organizationController.updateMemberRole);
+router.delete('/:organizationId/members/:memberId', validate(removeMemberSchema), organizationController.removeMember);
 
 module.exports = router;

@@ -7,12 +7,13 @@ class ApiKeyController {
   create = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const { projectId } = req.params;
-    const { name, expiresAt } = req.body;
+    const { name, expiresAt, scopes } = req.body;
 
     const apiKeyData = await apiKeyService.createApiKey({
       projectId,
       name,
       expiresAt,
+      scopes,
       userId,
     });
 

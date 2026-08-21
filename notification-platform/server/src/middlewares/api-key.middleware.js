@@ -50,6 +50,7 @@ const authenticateApiKey = async (req, res, next) => {
       projectId: matchingKey.projectId,
       name: matchingKey.name,
       keyPrefix: matchingKey.keyPrefix,
+      scopes: matchingKey.scopes || [],
       createdAt: matchingKey.createdAt,
     };
 

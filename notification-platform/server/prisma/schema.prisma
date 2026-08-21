@@ -17,6 +17,7 @@ enum Role {
   OWNER
   ADMIN
   MEMBER
+  VIEWER
 }
 
 enum Channel {
@@ -37,6 +38,20 @@ enum NotificationStatus {
   BOUNCED
   COMPLAINED
   SCHEDULED
+  SUPPRESSED
+}
+
+enum NotificationCategory {
+  TRANSACTIONAL
+  SECURITY
+  MARKETING
+  SYSTEM
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
 }
 
 enum AttemptStatus {
@@ -112,6 +127,7 @@ model Project {
   webhooks       Webhook[]
   events         Event[]
   usageRecords   UsageRecord[]
+  recipients     Recipient[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -125,6 +141,7 @@ model ApiKey {
   name       String
   keyPrefix  String
   keyHash    String    @unique
+  scopes     String[]  @default([])
   lastUsedAt DateTime?
   expiresAt  DateTime?
   revokedAt  DateTime?
@@ -158,25 +175,29 @@ model Template {
 
 /// Represents a single notification request created by a client application.
 model Notification {
-  id             String                @id @default(uuid())
-  projectId      String
-  templateId     String?
-  channel        Channel
-  recipient      String
-  status         NotificationStatus    @default(PENDING)
-  idempotencyKey String?
-  requestHash    String?
-  metadata       Json?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  sentAt         DateTime?
-  failedAt       DateTime?
-  scheduledAt    DateTime?
-  cancelledAt    DateTime?
-  project        Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  template       Template?             @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  attempts       NotificationAttempt[]
-  events         Event[]
+  id                String                @id @default(uuid())
+  projectId         String
+  recipientId       String?
+  templateId        String?
+  channel           Channel
+  category          NotificationCategory? @default(TRANSACTIONAL)
+  recipient         String
+  status            NotificationStatus    @default(PENDING)
+  suppressionReason String?
+  idempotencyKey    String?
+  requestHash       String?
+  metadata          Json?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  sentAt            DateTime?
+  failedAt          DateTime?
+  scheduledAt       DateTime?
+  cancelledAt       DateTime?
+  project           Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template          Template?             @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  recipientRef      Recipient?            @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  attempts          NotificationAttempt[]
+  events            Event[]
 
   @@unique([projectId, idempotencyKey])
   @@index([projectId, createdAt(sort: Desc)])
@@ -187,6 +208,58 @@ model Notification {
   @@map("notifications")
 }
 
+/// Represents an end-user recipient belonging to a customer project.
+model Recipient {
+  id             String                @id @default(uuid())
+  projectId      String
+  externalUserId String
+  email          String?
+  phone          String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  project        Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  preferences    RecipientPreference[]
+  devices        Device[]
+  notifications  Notification[]
+
+  @@unique([projectId, externalUserId])
+  @@index([projectId, externalUserId])
+  @@map("recipients")
+}
+
+/// Represents notification channel & category delivery preferences for a recipient.
+model RecipientPreference {
+  id          String               @id @default(uuid())
+  recipientId String
+  category    NotificationCategory
+  channel     Channel
+  enabled     Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  recipient   Recipient            @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([recipientId, category, channel])
+  @@index([recipientId])
+  @@map("recipient_preferences")
+}
+
+/// Represents a mobile or web push notification device registered to a recipient.
+model Device {
+  id          String         @id @default(uuid())
+  recipientId String
+  token       String
+  platform    DevicePlatform @default(WEB)
+  isActive    Boolean        @default(true)
+  lastSeenAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  recipient   Recipient      @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([recipientId, token])
+  @@index([recipientId, isActive])
+  @@map("devices")
+}
+
 /// Represents an individual delivery attempt for a notification.
 model NotificationAttempt {
   id             String        @id @default(uuid())
@@ -194,6 +267,7 @@ model NotificationAttempt {
   provider       String
   status         AttemptStatus
   attemptNumber  Int           @default(1)
+  attemptReason  String?
   errorCode      String?
   errorMessage   String?
   attemptedAt    DateTime      @default(now())

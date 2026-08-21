@@ -6,8 +6,11 @@ const NotFoundError = require('../../shared/errors/not-found-error');
 const { API_KEY_MESSAGES } = require('./api-key.constants');
 const { generateApiKey, hashApiKey } = require('./api-key.utils');
 
+const { validateScopes } = require('../../shared/auth/scopes');
+const ValidationError = require('../../shared/errors/validation-error');
+
 class ApiKeyService {
-  async createApiKey({ projectId, name, expiresAt, userId }) {
+  async createApiKey({ projectId, name, expiresAt, scopes = [], userId }) {
     const project = await projectRepository.findProjectById(projectId);
     if (!project) {
       throw new NotFoundError(API_KEY_MESSAGES.PROJECT_NOT_FOUND);
@@ -22,6 +25,18 @@ class ApiKeyService {
       throw new AuthorizationError(API_KEY_MESSAGES.INSUFFICIENT_PERMISSIONS);
     }
 
+    // Validate requested scopes if present
+    if (scopes && scopes.length > 0) {
+      const scopeCheck = validateScopes(scopes);
+      if (!scopeCheck.valid) {
+        throw new ValidationError(
+          `Invalid API key scopes: ${scopeCheck.invalidScopes.join(', ')}`,
+          null,
+          'INVALID_SCOPES'
+        );
+      }
+    }
+
     const { rawKey, keyPrefix } = generateApiKey();
     const keyHash = hashApiKey(rawKey);
 
@@ -31,6 +46,7 @@ class ApiKeyService {
       keyPrefix,
       keyHash,
       expiresAt,
+      scopes,
     });
 
     return {

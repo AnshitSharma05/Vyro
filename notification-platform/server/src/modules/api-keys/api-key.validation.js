@@ -11,6 +11,7 @@ const createApiKeySchema = z.object({
       .max(100, 'API key name cannot exceed 100 characters')
       .trim(),
     expiresAt: z.string().datetime({ message: 'Invalid expiration date format' }).optional(),
+    scopes: z.array(z.string()).optional().default([]),
   }),
 });
 

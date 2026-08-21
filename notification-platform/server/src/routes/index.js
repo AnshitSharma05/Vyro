@@ -13,6 +13,10 @@ const authenticate = require('../middlewares/auth.middleware');
 const validate = require('../middlewares/validation.middleware');
 const { listNotificationsSchema, getNotificationSchema, cancelNotificationSchema } = require('../modules/notifications/notification.validation');
 
+const recipientRoutes = require('../modules/recipients/recipient.routes');
+const preferenceRoutes = require('../modules/preferences/preference.routes');
+const deviceRoutes = require('../modules/devices/device.routes');
+
 const router = Router();
 
 // Health check endpoint
@@ -32,6 +36,11 @@ router.use('/projects/:projectId/api-keys', apiKeyRoutes);
 router.use('/projects/:projectId/templates', templateRoutes);
 router.use('/projects/:projectId/webhooks', webhookRoutes);
 router.use('/analytics', analyticsRoutes);
+
+// Recipient, Preference & Device Machine API Routes (X-API-Key authenticated)
+router.use('/recipients', recipientRoutes);
+router.use('/recipients', preferenceRoutes);
+router.use('/recipients', deviceRoutes);
 
 // Unauthenticated Inbound Provider Webhook Callback Routes
 router.use('/webhooks', providerWebhookRoutes);

@@ -346,6 +346,12 @@ paths:
                   type: string
                   format: date-time
                   example: "2027-12-31T23:59:59Z"
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                  example: ["notifications:send", "notifications:read"]
+                  description: Optional list of API key scopes (notifications:send, notifications:read, etc.)
       responses:
         '201':
           description: API key created successfully (raw key returned ONLY once)

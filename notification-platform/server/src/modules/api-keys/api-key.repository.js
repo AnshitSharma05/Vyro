@@ -1,7 +1,7 @@
 const prisma = require('../../config/database');
 
 class ApiKeyRepository {
-  async create({ projectId, name, keyPrefix, keyHash, expiresAt }) {
+  async create({ projectId, name, keyPrefix, keyHash, expiresAt, scopes = [] }) {
     return prisma.apiKey.create({
       data: {
         projectId,
@@ -9,12 +9,14 @@ class ApiKeyRepository {
         keyPrefix,
         keyHash,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
+        scopes: scopes || [],
       },
       select: {
         id: true,
         projectId: true,
         name: true,
         keyPrefix: true,
+        scopes: true,
         expiresAt: true,
         createdAt: true,
         updatedAt: true,
@@ -43,6 +45,7 @@ class ApiKeyRepository {
         projectId: true,
         name: true,
         keyPrefix: true,
+        scopes: true,
         lastUsedAt: true,
         expiresAt: true,
         revokedAt: true,
@@ -63,6 +66,7 @@ class ApiKeyRepository {
         projectId: true,
         name: true,
         keyPrefix: true,
+        scopes: true,
         lastUsedAt: true,
         expiresAt: true,
         revokedAt: true,

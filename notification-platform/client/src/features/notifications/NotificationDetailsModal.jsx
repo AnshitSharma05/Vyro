@@ -113,6 +113,13 @@ export const NotificationDetailsModal = ({ notification, isOpen, onClose }) => {
                         <span className="px-2 py-0.5 text-xs font-medium rounded-md bg-slate-100 text-slate-700 font-mono">
                           {attempt.provider}
                         </span>
+                        {attempt.attemptReason && (
+                          <span className={`px-2 py-0.5 text-xs font-semibold rounded-md ${
+                            attempt.attemptReason === 'FAILOVER' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                          }`}>
+                            {attempt.attemptReason}
+                          </span>
+                        )}
                       </div>
                       <span
                         className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
