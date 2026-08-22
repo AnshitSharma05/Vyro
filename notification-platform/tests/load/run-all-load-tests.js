@@ -9,7 +9,7 @@ function formatResultRow(name, result) {
   const p50 = result.latency ? Math.round(result.latency.p50 || 0) : 0;
   const p95 = result.latency ? Math.round(result.latency.p95 || 0) : 0;
   const p99 = result.latency ? Math.round(result.latency.p99 || 0) : 0;
-  const 2xx = result['2xx'] || 0;
+  const okCount = result['2xx'] || 0;
   const non2xx = (result.non2xx || 0) + (result['4xx'] || 0) + (result['5xx'] || 0);
 
   return {
@@ -18,7 +18,7 @@ function formatResultRow(name, result) {
     'p50 (ms)': p50,
     'p95 (ms)': p95,
     'p99 (ms)': p99,
-    '2xx OK': 2xx,
+    '2xx OK': okCount,
     'Non-2xx': non2xx,
   };
 }
