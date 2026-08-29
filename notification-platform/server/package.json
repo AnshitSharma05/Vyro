@@ -8,14 +8,11 @@
     "dev": "node --watch src/server.js",
     "worker": "node src/workers/worker.js",
     "worker:dev": "node --watch src/workers/worker.js",
-    "test": "jest --detectOpenHandles",
     "lint": "eslint src/ --ignore-pattern node_modules/",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "prisma db seed",
-    "smoke-test": "node scripts/smoke-test.js",
-    "test:load": "node ../tests/load/run-all-load-tests.js"
+    "db:seed": "prisma db seed"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

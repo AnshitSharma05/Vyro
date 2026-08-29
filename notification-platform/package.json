@@ -8,8 +8,6 @@
     "server": "npm --prefix server start",
     "worker": "npm --prefix server run worker",
     "client": "npm --prefix client run dev",
-    "test": "npm --prefix server test && npm --prefix sdk/node test",
-    "test:load": "npm --prefix server run test:load",
     "lint": "npm --prefix server run lint || true",
     "build": "npm --prefix client run build",
     "docker:up": "docker compose up -d",
