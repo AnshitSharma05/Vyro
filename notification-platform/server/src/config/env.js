@@ -50,9 +50,13 @@ function validateEnv() {
 
   const env = result.data;
 
-  // Insecure Secret Guard for Production
+  // Gmail app passwords are often pasted with spaces — normalize for SMTP auth
+  if (env.SMTP_PASS) {
+    env.SMTP_PASS = env.SMTP_PASS.replace(/\s/g, '');
+  }
+
+  const insecureSecrets = ['secret', 'jwt_secret', 'changeme', '12345678', 'password', 'api_key_secret'];
   if (env.NODE_ENV === 'production') {
-    const insecureSecrets = ['secret', 'jwt_secret', 'changeme', '12345678', 'password', 'api_key_secret'];
     if (insecureSecrets.includes(env.JWT_SECRET.toLowerCase())) {
       console.error('❌ FATAL: Insecure JWT_SECRET detected in production environment.');
       process.exit(1);

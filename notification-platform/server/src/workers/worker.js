@@ -1,8 +1,10 @@
 const { createNotificationWorker } = require('./notification.worker');
+const { transportMode } = require('../providers/email/nodemailer.client');
 const prisma = require('../config/database');
 const logger = require('../shared/utils/logger');
 
 logger.info('Starting Notification Platform Background Worker Process...');
+logger.info({ transportMode }, 'Email transport mode for this worker');
 
 const worker = createNotificationWorker();
 

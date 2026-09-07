@@ -8,6 +8,7 @@
     "dev": "node --watch src/server.js",
     "worker": "node src/workers/worker.js",
     "worker:dev": "node --watch src/workers/worker.js",
+    "test": "jest --passWithNoTests",
     "lint": "eslint src/ --ignore-pattern node_modules/",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

@@ -16,7 +16,13 @@ const requireScope = (requiredScope) => {
 
     // If key has defined scopes, enforce that requiredScope is present
     if (keyScopes.length > 0) {
-      if (!keyScopes.includes(requiredScope)) {
+      const hasAccess =
+        keyScopes.includes('*') ||
+        keyScopes.includes(requiredScope) ||
+        (requiredScope === 'notifications:send' && keyScopes.includes('notifications:write')) ||
+        (requiredScope === 'notifications:write' && keyScopes.includes('notifications:send'));
+
+      if (!hasAccess) {
         throw new AuthorizationError(
           `The API key does not have the required scope: "${requiredScope}"`
         );

@@ -51,4 +51,6 @@ const requirePermission = (requiredPermission) => {
 
 module.exports = {
   requirePermission,
+  authorizeMember: requirePermission,
+  authorize: requirePermission,
 };

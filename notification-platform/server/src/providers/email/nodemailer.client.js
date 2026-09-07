@@ -1,30 +1,43 @@
 const nodemailer = require('nodemailer');
+const config = require('../../config/env');
 
 function createTransporter() {
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASSWORD;
+  const host = config.SMTP_HOST;
+  const port = config.SMTP_PORT;
+  const user = config.SMTP_USER;
+  const pass = config.SMTP_PASS || process.env.SMTP_PASSWORD;
 
-  // Use live SMTP transport if host and user credentials are provided
+  // Use live SMTP transport when host and credentials are configured
   if (host && user && pass) {
-    return nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: {
-        user,
-        pass,
-      },
-    });
+    return {
+      mode: 'live-smtp',
+      transporter: nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+      }),
+    };
   }
 
-  // Fallback to JSON transport in test/development environment when live SMTP credentials are omitted
-  return nodemailer.createTransport({
-    jsonTransport: true,
-  });
+  // Fallback: captures email as JSON locally — does not deliver to real inboxes
+  return {
+    mode: 'jsonTransport-mock',
+    transporter: nodemailer.createTransport({ jsonTransport: true }),
+  };
 }
 
-const transporter = createTransporter();
+const { mode: transportMode, transporter } = createTransporter();
+
+if (transportMode === 'jsonTransport-mock') {
+  const logger = require('../../shared/utils/logger');
+  const hasUser = !!config.SMTP_USER;
+  const passLen = (config.SMTP_PASS || '').length;
+  logger.warn(
+    { hasUser, passLen },
+    'SMTP mock mode active — emails NOT sent to real inboxes. Save .env with SMTP_PASS (Ctrl+S), then restart server and worker.'
+  );
+}
 
 module.exports = transporter;
+module.exports.transportMode = transportMode;

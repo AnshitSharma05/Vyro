@@ -115,6 +115,31 @@ class TemplateRenderer {
       variables: allRequiredVars,
     };
   }
+
+  /**
+   * Safe preview renderer: renders template against sample data without throwing on missing variables.
+   * Unmatched variables remain as {{variableName}} tokens.
+   */
+  renderPreview({ subject, body }, data = {}) {
+    const subjectVars = this.extractVariables(subject);
+    const bodyVars = this.extractVariables(body);
+    const allRequiredVars = Array.from(new Set([...subjectVars, ...bodyVars]));
+
+    const replaceVar = (text) => {
+      if (!text || typeof text !== 'string') return text;
+      return text.replace(VARIABLE_REGEX, (_, varName) => {
+        const trimmedKey = varName.trim();
+        const val = data[trimmedKey];
+        return val !== undefined && val !== null ? String(val) : `{{${trimmedKey}}}`;
+      });
+    };
+
+    return {
+      subject: subject ? replaceVar(subject) : null,
+      body: replaceVar(body) || '',
+      variables: allRequiredVars,
+    };
+  }
 }
 
 module.exports = new TemplateRenderer();

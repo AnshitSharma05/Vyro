@@ -24,6 +24,7 @@ app.use(requestIdMiddleware);
 
 // Health check routes
 app.use('/health', healthRoutes);
+app.use('/api/v1/health', healthRoutes);
 
 // API v1 routes
 app.use('/api/v1', routes);

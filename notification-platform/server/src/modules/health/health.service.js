@@ -42,8 +42,8 @@ class HealthService {
     }
 
     return {
-      status: isHealthy ? 'ok' : 'degraded',
-      healthy: isHealthy,
+      status: checks.database === 'ok' ? 'ok' : 'degraded',
+      healthy: checks.database === 'ok',
       timestamp: new Date().toISOString(),
       checks,
     };

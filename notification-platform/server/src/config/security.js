@@ -54,8 +54,7 @@ const pinoRedactPaths = [
 ];
 
 module.exports = {
-  corsOptions,
-  corsMiddleware: cors(corsOptions),
+  corsMiddleware,
   helmetMiddleware,
   pinoRedactPaths,
 };

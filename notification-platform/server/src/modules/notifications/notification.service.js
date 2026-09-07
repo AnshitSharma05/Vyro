@@ -180,9 +180,14 @@ class NotificationService {
       data
     );
 
+    const fromAddress = data?.from || data?.sender || null;
+    const replyToAddress = data?.replyTo || data?.reply_to || null;
+
     const initialMetadata = {
       subject: rendered.subject,
       body: rendered.body,
+      from: fromAddress,
+      replyTo: replyToAddress,
       templateName: template.name,
       templateData: data,
     };

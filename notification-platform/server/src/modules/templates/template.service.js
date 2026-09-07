@@ -223,7 +223,7 @@ class TemplateService {
       throw new ValidationError('Template body is required for preview');
     }
 
-    const rendered = templateRenderer.renderTemplate(
+    const rendered = templateRenderer.renderPreview(
       { subject: targetSubject, body: targetBody },
       data
     );
